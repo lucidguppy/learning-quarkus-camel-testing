@@ -3,16 +3,17 @@ package com.example
 import io.quarkus.test.common.QuarkusTestResource
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager.TestInjector
+import io.quarkus.test.common.QuarkusTestResourceLifecycleManager.TestInjector.AnnotatedAndMatchesType
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.Dependent
 import jakarta.enterprise.inject.Default
-import jakarta.inject.Inject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.localstack.LocalStackContainer
+import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
@@ -21,6 +22,8 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.waiters.S3Waiter
 
+@Target(AnnotationTarget.FIELD)
+@Retention(AnnotationRetention.RUNTIME)
 annotation class InjectMyS3
 
 @Dependent
@@ -37,7 +40,7 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
     override fun inject(testInjector: TestInjector) {
         testInjector.injectIntoFields(
             s3,
-            TestInjector.AnnotatedAndMatchesType(
+            AnnotatedAndMatchesType(
                 InjectMyS3::class.java,
                 MyS3Bean::class.java
                 )
@@ -47,6 +50,7 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
 
     override fun start(): MutableMap<String, String> {
         localstack.start()
+        Wait.forHealthcheck()
         val anS3 = S3Client
             .builder()
             .endpointOverride(localstack.getEndpoint())
@@ -77,24 +81,23 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
 @QuarkusTestResource(PlanetaryTestResource::class)
 class PlanetaryConduitRouteTest {
 
-    @InjectMyS3
-    @field: ApplicationScoped
-    lateinit var s3: MyS3Bean
+    @InjectMyS3 lateinit var s3: MyS3Bean
 
 
-    val bucketName = "FOO"
-    val otherBucketName = "BAR"
+    val bucketName = "foo"
+    val otherBucketName = "bar"
 
     @BeforeEach
     fun setUp() {
+        val s3Waiter: S3Waiter = s3.client.waiter()
         for (name in arrayOf(bucketName, otherBucketName)) {
             val s3Waiter: S3Waiter = s3.client.waiter()
             val bucketRequest = CreateBucketRequest.builder()
-                .bucket(bucketName)
+                .bucket(name)
                 .build()
             s3.client.createBucket(bucketRequest)
             val bucketRequestWait = HeadBucketRequest.builder()
-                .bucket(bucketName)
+                .bucket(name)
                 .build()
 
             // Wait until the bucket is created and print out the response.
@@ -104,7 +107,7 @@ class PlanetaryConduitRouteTest {
                     x
                 )
             }
-            println(bucketName + " is ready")
+            println(name + " is ready")
         }
     }
 
@@ -134,12 +137,14 @@ class PlanetaryConduitRouteTest {
 
 
         }
-        s3.client.close()
     }
 
     @Test
     fun testCardinalGrameter() {
         assertEquals(1, 1)
-        var x = 1
+    }
+    @Test
+    fun testNovorTrunion() {
+        assertEquals(2, 2)
     }
 }
