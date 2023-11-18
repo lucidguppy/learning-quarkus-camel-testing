@@ -57,9 +57,8 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
             )
             .region(Region.of(localstack.getRegion()))
             .build()
-        val s3Bean = MyS3Bean()
-        s3Bean.client = anS3
         s3 = MyS3Bean()
+        s3.client = anS3
 
         // https://camel.apache.org/camel-quarkus/3.5.x/user-guide/testing.html#_testing_with_external_services
         return hashMapOf(
