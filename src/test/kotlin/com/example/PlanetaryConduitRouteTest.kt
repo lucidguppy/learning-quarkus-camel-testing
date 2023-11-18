@@ -2,9 +2,11 @@ package com.example
 
 import io.quarkus.test.common.QuarkusTestResource
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager
+import io.quarkus.test.common.QuarkusTestResourceLifecycleManager.TestInjector
 import io.quarkus.test.junit.QuarkusTest
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.Dependent
+import jakarta.enterprise.inject.Default
 import jakarta.inject.Inject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -19,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.waiters.S3Waiter
 
+annotation class InjectMyS3
 
 @Dependent
 class MyS3Bean {
@@ -30,6 +33,17 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
         LocalStackContainer.Service.S3
     )
     private lateinit var s3: MyS3Bean
+
+    override fun inject(testInjector: TestInjector) {
+        testInjector.injectIntoFields(
+            s3,
+            TestInjector.AnnotatedAndMatchesType(
+                InjectMyS3::class.java,
+                MyS3Bean::class.java
+                )
+        )
+    }
+
 
     override fun start(): MutableMap<String, String> {
         localstack.start()
@@ -64,7 +78,7 @@ class PlanetaryTestResource : QuarkusTestResourceLifecycleManager {
 @QuarkusTestResource(PlanetaryTestResource::class)
 class PlanetaryConduitRouteTest {
 
-    @Inject
+    @InjectMyS3
     @field: ApplicationScoped
     lateinit var s3: MyS3Bean
 
